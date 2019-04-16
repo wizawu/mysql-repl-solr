@@ -1,6 +1,17 @@
 package main.com.github.wizawu.mysolr
 
-import com.github.shyiko.mysql.binlog.event.TableMapEventData
 import java.util.concurrent.ConcurrentHashMap
 
-val tableMetadata = ConcurrentHashMap<Long, TableMapEventData>()
+data class ColumnMetadata(
+    var name: String,
+    var type: String,
+    var size: Int
+)
+
+data class TableMetadata(
+    var database: String,
+    var name: String,
+    var columns: List<ColumnMetadata>
+)
+
+val tableMetadata = ConcurrentHashMap<Long, TableMetadata>()

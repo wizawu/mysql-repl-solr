@@ -22,5 +22,6 @@ class SolrClient(host: String, port: Int, core: String) {
     }
 
     fun delete(data: DeleteRowsEventData) {
+        val table = tableMetadata[data.tableId]!!
     }
 }

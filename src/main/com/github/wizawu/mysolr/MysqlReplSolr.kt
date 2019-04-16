@@ -6,10 +6,12 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer
 import com.github.wizawu.mysolr.Configuration
 import org.pmw.tinylog.Configurator
 import org.pmw.tinylog.Logger
+import java.sql.DriverManager
 
 fun main() {
     // Set logging format
     Configurator.currentConfig().formatPattern("{date:yyyy-MM-dd HH:mm:ss} [{level}] [{thread}] {message}").activate()
+
     // Initialize mysql/solr clients
     val config = Configuration()
     val mysqlClient = BinaryLogClient(
@@ -19,6 +21,7 @@ fun main() {
         config.mysql.password
     )
     val solrClient = SolrClient(config.solr.host, config.solr.port, config.solr.core)
+
     // Set EventDeserializer
     val eventDeserializer = EventDeserializer()
     eventDeserializer.setCompatibilityMode(
@@ -26,6 +29,7 @@ fun main() {
         EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG
     )
     mysqlClient.setEventDeserializer(eventDeserializer)
+
     // Register event listener
     mysqlClient.registerEventListener { event: Event ->
         val databases = config.mysql.databases
@@ -33,29 +37,55 @@ fun main() {
         val data = event.getData() as EventData?
         when (data) {
             null -> Logger.debug(header.eventType)
-            is TableMapEventData -> tableMetadata[data.tableId] = data
+            is TableMapEventData -> {
+                if (databases.contains(data.database) && databases.getValue(data.database).contains(data.table)) {
+                    val connection = DriverManager.getConnection(
+                        "jdbc:mysql://${config.mysql.host}:${config.mysql.port}/${data.database}",
+                        config.mysql.username,
+                        config.mysql.password
+                    )
+                    // Retrieve table metadata
+                    try {
+                        val columns = ArrayList<ColumnMetadata>()
+                        val resultSet = connection.metaData.getColumns(null, null, data.table, null)
+                        while (resultSet.next()) {
+                            columns.add(
+                                ColumnMetadata(
+                                    resultSet.getString("COLUMN_NAME"),
+                                    resultSet.getString("TYPE_NAME"),
+                                    resultSet.getInt("COLUMN_SIZE")
+                                )
+                            )
+                        }
+                        resultSet.close()
+                        tableMetadata[data.tableId] = TableMetadata(data.database, data.table, columns)
+                    } finally {
+                        connection.close()
+                    }
+                }
+            }
             is WriteRowsEventData -> {
-                if (tableMetadata.contains(data.tableId)) {
+                if (tableMetadata.containsKey(data.tableId)) {
                     val database = tableMetadata[data.tableId]!!.database
-                    val table = tableMetadata[data.tableId]!!.table
+                    val table = tableMetadata[data.tableId]!!.name
                     if (databases.contains(database) && databases.getValue(database).contains(table)) {
                         solrClient.write(data)
                     }
                 }
             }
             is UpdateRowsEventData -> {
-                if (tableMetadata.contains(data.tableId)) {
+                if (tableMetadata.containsKey(data.tableId)) {
                     val database = tableMetadata[data.tableId]!!.database
-                    val table = tableMetadata[data.tableId]!!.table
+                    val table = tableMetadata[data.tableId]!!.name
                     if (databases.contains(database) && databases.getValue(database).contains(table)) {
                         solrClient.update(data)
                     }
                 }
             }
             is DeleteRowsEventData -> {
-                if (tableMetadata.contains(data.tableId)) {
+                if (tableMetadata.containsKey(data.tableId)) {
                     val database = tableMetadata[data.tableId]!!.database
-                    val table = tableMetadata[data.tableId]!!.table
+                    val table = tableMetadata[data.tableId]!!.name
                     if (databases.contains(database) && databases.getValue(database).contains(table)) {
                         solrClient.delete(data)
                     }
@@ -64,6 +94,7 @@ fun main() {
             else -> Logger.debug(header.eventType)
         }
     }
+
     // Start listening events
     mysqlClient.connect()
 }

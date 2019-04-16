@@ -24,7 +24,7 @@ open class Application {
     lateinit var solr: Solr
 }
 
-class Configuration: Application() {
+class Configuration : Application() {
     init {
         val configName = System.getenv().getOrDefault("CONFIG_NAME", "application")
         val inputStream: InputStream = Files.newInputStream(Paths.get("src/main/resources/$configName.yml"))
