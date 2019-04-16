@@ -3,8 +3,12 @@ mysql:
   port: 3306
   username: test
   password: test
+  databases:
+    test:
+    - table1
+    - table2
 
 solr:
   host: 0.0.0.0
-  port: 3307
+  port: 8983
   core: test

@@ -10,6 +10,7 @@ class Mysql {
     var port: Int = 3306
     lateinit var username: String
     lateinit var password: String
+    lateinit var databases: Map<String, List<String>>
 }
 
 class Solr {
@@ -18,17 +19,18 @@ class Solr {
     lateinit var core: String
 }
 
-class Application {
+open class Application {
     lateinit var mysql: Mysql
     lateinit var solr: Solr
 }
 
-class Configuration {
-    var application: Application
-
+class Configuration: Application() {
     init {
-        val inputStream: InputStream = Files.newInputStream(Paths.get("src/main/resources/application.yml"))
-        application = Yaml().loadAs(inputStream, Application::class.java)
+        val configName = System.getenv().getOrDefault("CONFIG_NAME", "application")
+        val inputStream: InputStream = Files.newInputStream(Paths.get("src/main/resources/$configName.yml"))
+        val application = Yaml().loadAs(inputStream, Application::class.java)
         inputStream.close()
+        mysql = application.mysql
+        solr = application.solr
     }
 }
