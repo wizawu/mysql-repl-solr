@@ -3,6 +3,7 @@ package com.github.wizawu.mysolr
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData
+import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.HttpClients
@@ -54,11 +55,8 @@ class SolrClient(host: String, port: Int) {
                     is ByteArray ->
                         when (table.columns[i].type.toUpperCase()) {
                             "JSON" -> {
-                                if (value.size > 0 && value[0].toString() == "[") {
-                                    json.put(key, JSONArray(value))
-                                } else {
-                                    json.put(key, JSONObject(value))
-                                }
+                                val text = JsonBinary.parseAsString(value)
+                                json.put(key, if (text.startsWith("[")) JSONArray(text) else JSONObject(text))
                             }
                             else -> json.put(key, String(value))
                         }
