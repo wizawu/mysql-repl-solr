@@ -3,18 +3,20 @@ package com.github.wizawu.mysolr
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData
+import org.apache.http.client.methods.HttpPost
+import org.apache.http.entity.StringEntity
+import org.apache.http.impl.client.HttpClients
 import org.apache.solr.client.solrj.impl.HttpSolrClient
+import org.json.JSONArray
 import org.json.JSONObject
+import org.pmw.tinylog.Logger
 import java.io.Serializable
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.*
 
 class SolrClient(host: String, port: Int) {
-    private var client: HttpSolrClient
-
-    init {
-        val url = "http://$host:$port/solr"
-        client = HttpSolrClient.Builder(url).build()
-    }
+    private val url = "http://$host:$port/solr"
+    private var client = HttpSolrClient.Builder(url).build()
 
     fun write(data: WriteRowsEventData) {
         val table = tableMetadata[data.tableId]!!
@@ -48,16 +50,36 @@ class SolrClient(host: String, port: Int) {
                 val key = table.columns[i].name
                 val value = row[i]
                 when (value) {
-                    null -> null
+                    null -> json.put(key, JSONObject.NULL)
                     is ByteArray ->
                         when (table.columns[i].type.toUpperCase()) {
-                            "JSON" -> json.put(key, JSONObject(value))
+                            "JSON" -> {
+                                if (value.size > 0 && value[0].toString() == "[") {
+                                    json.put(key, JSONArray(value))
+                                } else {
+                                    json.put(key, JSONObject(value))
+                                }
+                            }
                             else -> json.put(key, String(value))
                         }
                     else -> json.put(key, value)
                 }
             }
         }
-        println(json.toString())
+
+        val http = HttpClients.createDefault()
+        try {
+            val request = HttpPost("$url/${table.solrCore}/update?commitWithin=1000&overwrite=true&wt=json")
+            request.setHeader("Content-Type", "application/json")
+            request.entity = StringEntity(JSONArray(arrayOf(json)).toString(), UTF_8)
+            val response = http.execute(request)
+            if (response.statusLine.statusCode != 200) {
+                Logger.error("update ${table.solrCore} ${json.get("id")}: ${String(response.entity.content.readBytes())}")
+            }
+        } catch (e: Exception) {
+            Logger.error("update ${table.solrCore} ${json.get("id")}: ${e.message}")
+        } finally {
+            http.close()
+        }
     }
 }
