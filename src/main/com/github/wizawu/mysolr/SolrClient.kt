@@ -68,9 +68,9 @@ class SolrClient(host: String, port: Int) {
         val http = HttpClients.createDefault()
         val action = "upsert ${table.database}.${table.name} ${json.get("id")} to ${table.solrCore}"
         try {
-            val request = HttpPost("$url/${table.solrCore}/update?commitWithin=1000&overwrite=true&wt=json")
+            val request = HttpPost("$url/${table.solrCore}/update/json/docs?commitWithin=1000&overwrite=true&wt=json")
             request.setHeader("Content-Type", "application/json")
-            request.entity = StringEntity(JSONArray(arrayOf(json)).toString(), UTF_8)
+            request.entity = StringEntity(json.toString(), UTF_8)
             val response = http.execute(request)
             if (response.statusLine.statusCode != 200) {
                 Logger.error("$action: ${String(response.entity.content.readBytes())}")
