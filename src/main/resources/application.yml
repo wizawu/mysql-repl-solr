@@ -5,10 +5,9 @@ mysql:
   password: test
   databases:
     test:
-    - table1
-    - table2
+      table1: core1
+      table2: core2
 
 solr:
   host: 0.0.0.0
   port: 8983
-  core: test

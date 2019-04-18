@@ -1,4 +1,4 @@
-package main.com.github.wizawu.mysolr
+package com.github.wizawu.mysolr
 
 import java.util.concurrent.ConcurrentHashMap
 
@@ -11,7 +11,8 @@ data class ColumnMetadata(
 data class TableMetadata(
     var database: String,
     var name: String,
-    var columns: List<ColumnMetadata>
+    var columns: List<ColumnMetadata>,
+    var solrCore: String
 )
 
 val tableMetadata = ConcurrentHashMap<Long, TableMetadata>()

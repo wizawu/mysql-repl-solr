@@ -10,13 +10,12 @@ class Mysql {
     var port: Int = 3306
     lateinit var username: String
     lateinit var password: String
-    lateinit var databases: Map<String, List<String>>
+    lateinit var databases: Map<String, Map<String, String>>
 }
 
 class Solr {
     lateinit var host: String
     var port: Int = 8983
-    lateinit var core: String
 }
 
 open class Application {

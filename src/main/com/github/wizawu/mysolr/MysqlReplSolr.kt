@@ -1,9 +1,8 @@
-package main.com.github.wizawu.mysolr
+package com.github.wizawu.mysolr
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient
 import com.github.shyiko.mysql.binlog.event.*
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer
-import com.github.wizawu.mysolr.Configuration
 import org.pmw.tinylog.Configurator
 import org.pmw.tinylog.Logger
 import java.sql.DriverManager
@@ -20,7 +19,7 @@ fun main() {
         config.mysql.username,
         config.mysql.password
     )
-    val solrClient = SolrClient(config.solr.host, config.solr.port, config.solr.core)
+    val solrClient = SolrClient(config.solr.host, config.solr.port)
 
     // Set EventDeserializer
     val eventDeserializer = EventDeserializer()
@@ -58,7 +57,10 @@ fun main() {
                             )
                         }
                         resultSet.close()
-                        tableMetadata[data.tableId] = TableMetadata(data.database, data.table, columns)
+                        tableMetadata[data.tableId] = TableMetadata(
+                            data.database, data.table, columns,
+                            databases.getValue(data.database).getValue(data.table)
+                        )
                     } finally {
                         connection.close()
                     }
