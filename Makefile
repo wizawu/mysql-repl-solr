@@ -1,8 +1,5 @@
-deps:
-	gradle lib
+build:
+	gradle lib --no-daemon
 
 server:
-	gradle run
-
-prod:
-	CONFIG_NAME=application-prod gradle run
+	gradle run --no-daemon
